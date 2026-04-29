@@ -1,0 +1,628 @@
+{
+  "info": {
+    "name": "移动办公后台接口",
+    "description": "Mobile Office App 后端 API 测试集合\n\n使用步骤：\n1. 先运行「用户登录」接口获取 token\n2. Collection 变量会自动保存 token，后续接口自动携带\n3. 依次测试其他接口",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3002/api/mobile_officing",
+      "type": "string"
+    },
+    {
+      "key": "adminUrl",
+      "value": "http://localhost:3002/admin/file",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "一、用户模块",
+      "item": [
+        {
+          "name": "1. 用户登录",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loginname\": \"17704051019\",\n  \"password\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "login"]
+            },
+            "description": "登录获取token\n\n请求体：\n- loginname: 登录账号（手机号）\n- password: 登录密码\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"登录成功\",\n  \"data\": { \"token\": \"eyJhbG...\" }\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.code === 200 && jsonData.data && jsonData.data.token) {",
+                  "    pm.collectionVariables.set('token', jsonData.data.token);",
+                  "    console.log('Token saved to collection variables');",
+                  "}",
+                  "pm.test('登录成功', function () {",
+                  "    pm.expect(jsonData.code).to.equal(200);",
+                  "    pm.expect(jsonData.data).to.have.property('token');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. 获取用户信息",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "token",
+                "value": "{{token}}",
+                "description": "登录时获取的JWT Token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/info",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "info"]
+            },
+            "description": "获取当前登录用户的详细信息\n\n需要在请求头中携带 token\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"获取成功\",\n  \"data\": {\n    \"userid\": \"user_b7d8955c-...\",\n    \"username\": \"张三\",\n    \"loginname\": \"17704051019\",\n    \"tel\": \"17704051019\",\n    \"nickname\": \"张三\",\n    \"sex\": 1,\n    \"score\": 100\n  }\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('获取用户信息成功', function () {",
+                  "    pm.expect(jsonData.code).to.equal(200);",
+                  "    pm.expect(jsonData.data).to.have.property('userid');",
+                  "    pm.expect(jsonData.data).to.have.property('nickname');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. 获取短信验证码",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/smscode?phone=13800138000",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "smscode"],
+              "query": [
+                {
+                  "key": "phone",
+                  "value": "13800138000",
+                  "description": "手机号码"
+                }
+              ]
+            },
+            "description": "获取短信验证码（当前为模拟实现，验证码直接返回在响应中）\n\n请求参数：\n- phone: 手机号码\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"验证码发送成功\",\n  \"data\": { \"code\": \"382916\" }\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('获取验证码成功', function () {",
+                  "    pm.expect(jsonData.code).to.equal(200);",
+                  "    pm.expect(jsonData.data).to.have.property('code');",
+                  "    pm.expect(jsonData.data.code).to.have.lengthOf(6);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. 更换手机号",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "token",
+                "value": "{{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"13800138000\",\n  \"code\": \"382916\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/changePhone",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "changePhone"]
+            },
+            "description": "更换绑定的手机号码\n\n需要先通过「获取短信验证码」接口获取验证码\n\n请求体：\n- phone: 新手机号\n- code: 短信验证码\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"手机号修改成功\"\n}\n```"
+          }
+        },
+        {
+          "name": "5. 修改密码",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "token",
+                "value": "{{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"123456\",\n  \"newPassword\": \"654321\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/changePassword",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "changePassword"]
+            },
+            "description": "修改登录密码\n\n请求体：\n- oldPassword: 原密码\n- newPassword: 新密码（6-16位）\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"密码修改成功\"\n}\n```\n\n注意：修改密码成功后需要重新登录"
+          }
+        }
+      ]
+    },
+    {
+      "name": "二、通讯录模块",
+      "item": [
+        {
+          "name": "6. 获取员工列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "token",
+                "value": "{{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employee/list",
+              "host": ["{{baseUrl}}"],
+              "path": ["employee", "list"]
+            },
+            "description": "获取所有在职员工列表\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"获取成功\",\n  \"data\": [\n    {\n      \"_id\": \"65f1a2b3c...\",\n      \"name\": \"张三\",\n      \"phone\": \"17704051019\",\n      \"department_name\": \"技术部\",\n      \"position\": \"前端工程师\",\n      \"status\": 1\n    }\n  ]\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('获取员工列表成功', function () {",
+                  "    pm.expect(jsonData.code).to.equal(200);",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "    pm.expect(jsonData.data.length).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. 获取部门列表（含员工）",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "token",
+                "value": "{{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/employee/department/list",
+              "host": ["{{baseUrl}}"],
+              "path": ["employee", "department", "list"]
+            },
+            "description": "获取所有部门及其下属员工列表\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"获取成功\",\n  \"data\": [\n    {\n      \"_id\": \"65f1a2b3c...\",\n      \"name\": \"技术部\",\n      \"team\": \"研发一组\",\n      \"employees\": [\n        {\n          \"name\": \"张三\",\n          \"position\": \"前端工程师\"\n        }\n      ]\n    }\n  ]\n}\n```"
+          }
+        }
+      ]
+    },
+    {
+      "name": "三、审批流程模块",
+      "item": [
+        {
+          "name": "8. 获取审批列表（全部）",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "token",
+                "value": "{{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/list?type_id=0&page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "list"],
+              "query": [
+                {
+                  "key": "type_id",
+                  "value": "0",
+                  "description": "类型筛选：0=全部，1=人事管理，2=行政事务，3=财务类，4=业务相关"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "页码"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10",
+                  "description": "每页条数"
+                }
+              ]
+            },
+            "description": "分页获取审批流程列表\n\n请求参数：\n- type_id: 类型筛选（0=全部，1=人事管理，2=行政事务，3=财务类，4=业务相关）\n- page: 页码\n- pageSize: 每页条数\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"data\": {\n    \"total\": 5,\n    \"items\": [\n      {\n        \"approve_number\": \"APV202401001\",\n        \"type\": \"请假申请\",\n        \"reason\": \"家中有事\",\n        \"approve_status\": 3\n      }\n    ]\n  }\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('获取审批列表成功', function () {",
+                  "    pm.expect(jsonData.code).to.equal(200);",
+                  "    pm.expect(jsonData.data).to.have.property('total');",
+                  "    pm.expect(jsonData.data).to.have.property('items');",
+                  "    pm.expect(jsonData.data.items).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.1 获取审批列表（人事管理）",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "token",
+                "value": "{{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/list?type_id=1&page=1&pageSize=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "list"],
+              "query": [
+                {
+                  "key": "type_id",
+                  "value": "1",
+                  "description": "1=人事管理"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "筛选人事管理类型的审批记录"
+          }
+        },
+        {
+          "name": "8.2 获取审批列表（行政事务）",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "token",
+                "value": "{{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/list?type_id=2&page=1&pageSize=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "list"],
+              "query": [
+                {
+                  "key": "type_id",
+                  "value": "2",
+                  "description": "2=行政事务"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "筛选行政事务类型的审批记录"
+          }
+        },
+        {
+          "name": "9. 新增审批申请（请假）",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "token",
+                "value": "{{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type_id\": \"1\",\n  \"type\": \"请假申请\",\n  \"department\": \"技术部\",\n  \"reason\": \"身体不适，需要去医院检查\",\n  \"begin_date\": \"2024-05-10\",\n  \"end_date\": \"2024-05-10\",\n  \"begin_time\": \"09:00\",\n  \"end_time\": \"18:00\",\n  \"days\": \"1\",\n  \"hours\": \"8\",\n  \"initiator\": \"张三\",\n  \"department_leader\": \"李四\",\n  \"personnel_department\": \"钱七\",\n  \"cc_persons\": [\"王五\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/add",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "add"]
+            },
+            "description": "提交新的审批申请\n\n请求体字段说明：\n- type_id: 类型ID（1=人事管理）\n- type: 申请类型（如：请假申请）\n- department: 部门名称\n- reason: 申请原因\n- begin_date/end_date: 起止日期\n- begin_time/end_time: 起止时间\n- days: 天数\n- hours: 小时数\n- initiator: 发起人\n- department_leader: 部门领导\n- personnel_department: 人事审批人\n- cc_persons: 抄送人数组\n\n响应：\n```json\n{\n  \"code\": 200,\n  \"message\": \"提交成功\"\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('新增审批成功', function () {",
+                  "    pm.expect(jsonData.code).to.equal(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "9.1 新增审批申请（行政事务）",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "token",
+                "value": "{{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type_id\": \"2\",\n  \"type\": \"行政事务\",\n  \"department\": \"技术部\",\n  \"reason\": \"需要采购新的开发设备，包括显示器和键盘\",\n  \"begin_date\": \"2024-05-15\",\n  \"end_date\": \"2024-05-15\",\n  \"begin_time\": \"14:00\",\n  \"end_time\": \"17:00\",\n  \"days\": \"0\",\n  \"hours\": \"3\",\n  \"initiator\": \"张三\",\n  \"department_leader\": \"李四\",\n  \"cc_persons\": [\"孙八\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/add",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "add"]
+            },
+            "description": "提交行政事务类型的审批申请"
+          }
+        }
+      ]
+    },
+    {
+      "name": "四、工资模块",
+      "item": [
+        {
+          "name": "10. 获取工资列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "token",
+                "value": "{{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/salary/list?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["salary", "list"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "页码"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10",
+                  "description": "每页条数"
+                }
+              ]
+            },
+            "description": "分页获取工资单列表\n\n请求参数：\n- page: 页码（默认1）\n- pageSize: 每页条数（默认10）\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"data\": {\n    \"total\": 3,\n    \"items\": [\n      {\n        \"year\": \"2024\",\n        \"month\": \"03\",\n        \"base_salary\": \"15000\",\n        \"net_salary\": \"17050\"\n      }\n    ]\n  }\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('获取工资列表成功', function () {",
+                  "    pm.expect(jsonData.code).to.equal(200);",
+                  "    pm.expect(jsonData.data).to.have.property('total');",
+                  "    pm.expect(jsonData.data).to.have.property('items');",
+                  "    pm.expect(jsonData.data.items).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. 获取工资详情",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "token",
+                "value": "{{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/salary/info?id={{salaryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["salary", "info"],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "{{salaryId}}",
+                  "description": "工资单ID（从工资列表接口获取）"
+                }
+              ]
+            },
+            "description": "获取单条工资单的详细信息\n\n请求参数：\n- id: 工资单ID\n\n提示：先调用「获取工资列表」接口，从返回的 items 中取一条的 _id 填入此处\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"data\": {\n    \"_id\": \"65f1a2b3c...\",\n    \"year\": \"2024\",\n    \"month\": \"03\",\n    \"base_salary\": \"15000\",\n    \"merit_salary\": \"3500\",\n    \"absence_days\": \"0\",\n    \"sick_leave_days\": \"0\",\n    \"welfare_bonus\": \"2000\",\n    \"social_security_total\": \"1650\",\n    \"provident_fund_total\": \"1800\",\n    \"net_salary\": \"17050\",\n    \"job_number\": \"EMP001\",\n    \"department\": \"技术部\"\n  }\n}\n```"
+          }
+        }
+      ]
+    },
+    {
+      "name": "五、公告模块",
+      "item": [
+        {
+          "name": "12. 获取公告列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "token",
+                "value": "{{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notice/list",
+              "host": ["{{baseUrl}}"],
+              "path": ["notice", "list"]
+            },
+            "description": "获取公司公告列表\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"data\": [\n    {\n      \"_id\": \"65f1a2b3c...\",\n      \"title\": \"关于2024年春节放假安排的通知\",\n      \"date\": \"2024-01-15\",\n      \"read_count\": 156,\n      \"publish_department\": \"行政部\",\n      \"content\": \"notice_html/notice1.html\"\n    }\n  ]\n}\n```\n\n注意：content 字段为相对路径，需拼接 http://localhost:3002/ 访问完整内容"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('获取公告列表成功', function () {",
+                  "    pm.expect(jsonData.code).to.equal(200);",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "    pm.expect(jsonData.data.length).to.be.above(0);",
+                  "    pm.expect(jsonData.data[0]).to.have.property('title');",
+                  "    pm.expect(jsonData.data[0]).to.have.property('content');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "六、文件上传模块",
+      "item": [
+        {
+          "name": "13. 上传聊天文件",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "选择要上传的文件（图片、视频等）"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{adminUrl}}/chats/upload",
+              "host": ["{{adminUrl}}"],
+              "path": ["chats", "upload"]
+            },
+            "description": "上传聊天文件（图片/视频）\n\nContent-Type: multipart/form-data\n\n请求参数：\n- file: 文件（选择本地文件）\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"上传成功\",\n  \"data\": {\n    \"url\": \"/uploads/chats/1710921600000.png\"\n  }\n}\n```\n\n上传后的文件访问地址：http://localhost:3002/uploads/chats/文件名"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('文件上传成功', function () {",
+                  "    pm.expect(jsonData.code).to.equal(200);",
+                  "    pm.expect(jsonData.data).to.have.property('url');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
