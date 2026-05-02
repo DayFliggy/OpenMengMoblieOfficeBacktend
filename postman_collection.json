@@ -203,6 +203,48 @@
             },
             "description": "修改登录密码\n\n请求体：\n- oldPassword: 原密码\n- newPassword: 新密码（6-16位）\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"密码修改成功\"\n}\n```\n\n注意：修改密码成功后需要重新登录"
           }
+        },
+        {
+          "name": "6. 忘记密码（重置密码）",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"17704051019\",\n  \"code\": \"382916\",\n  \"newPassword\": \"654321\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/resetPassword",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "resetPassword"]
+            },
+            "description": "忘记密码 - 通过手机验证码重置密码（无需登录）\n\n调用流程：\n1. 先调用「获取短信验证码」接口获取验证码\n2. 提交手机号、验证码和新密码\n\n请求体：\n- phone: 注册手机号\n- code: 短信验证码\n- newPassword: 新密码\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"密码重置成功\"\n}\n```\n\n错误响应：\n- 验证码错误或已过期: { \"code\": 400, \"message\": \"验证码错误或已过期\" }\n- 手机号未注册: { \"code\": 400, \"message\": \"该手机号未注册\" }"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('密码重置成功', function () {",
+                  "    pm.expect(jsonData.code).to.equal(200);",
+                  "    pm.expect(jsonData.message).to.equal('密码重置成功');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
