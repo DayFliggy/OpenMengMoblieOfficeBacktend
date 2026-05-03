@@ -12,7 +12,7 @@
 
 ```
 HTTP接口: http://localhost:3002/api/mobile_officing/
-WebSocket: ws://localhost:3001/api/chat/connect
+WebSocket: ws://localhost:3002/api/chat/connect
 文件上传: http://localhost:3002/admin/file/
 静态资源: http://localhost:3002/uploads/
 公告内容: http://localhost:3002/notice_html/
@@ -60,6 +60,8 @@ Authorization: Bearer <登录时获取的JWT Token>
 
 ### 3.1 用户 (User)
 
+**接口**: `GET /api/mobile_officing/user/info`
+
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | userid | string | 用户唯一标识（UUID格式） |
@@ -76,8 +78,14 @@ Authorization: Bearer <登录时获取的JWT Token>
 | birthday | string | 生日，格式YYYY-MM-DD |
 | createTime | string | 注册时间 |
 | score | number | 积分 |
+| createdAt | string | 创建时间（ISO 8601格式） |
+| updatedAt | string | 更新时间（ISO 8601格式） |
+
+**说明**: 通过`toSafeObject()`方法返回，已过滤`password`、`__v`和`_id`字段。`createdAt`和`updatedAt`由Mongoose timestamps自动生成。
 
 ### 3.2 员工 (Employee)
+
+**接口**: `GET /api/mobile_officing/employee/list`
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -93,24 +101,34 @@ Authorization: Bearer <登录时获取的JWT Token>
 | entry_time | string | 入职时间 |
 | remark | string | 备注 |
 | status | number | 状态，1=在职，0=离职 |
-| created_at | string | 创建时间 |
-| updated_at | string | 更新时间 |
+| createdAt | string | 创建时间（ISO 8601格式） |
+| updatedAt | string | 更新时间（ISO 8601格式） |
+| __v | number | Mongoose版本号 |
 
 ### 3.3 部门 (Department)
 
+**接口**: `GET /api/mobile_officing/employee/department/list`
+
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| _id | string | 部门ID |
+| _id | string | 部门ID（MongoDB ObjectId） |
 | name | string | 部门名称 |
 | team | string | 团队名称 |
+| createdAt | string | 创建时间（ISO 8601格式） |
+| updatedAt | string | 更新时间（ISO 8601格式） |
+| __v | number | Mongoose版本号 |
 | employees | array | 部门员工列表（Employee数组） |
+
+**说明**: `employees`字段由接口动态查询填充，包含该部门下所有在职员工（status=1）的完整信息。使用`.lean()`查询，返回扁平JSON对象。
 
 ### 3.4 审批流程 (Process)
 
+**接口**: `GET /api/mobile_officing/process/list`
+
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| _id | string | 记录ID |
-| approve_number | string | 审批编号（自动生成） |
+| _id | string | 记录ID（MongoDB ObjectId） |
+| approve_number | string | 审批编号（自动生成，格式：APV + 时间戳 + 随机字符） |
 | department | string | 部门名称 |
 | type_id | string | 类型ID：1=人事管理，2=行政事务，3=财务类，4=业务相关 |
 | type | string | 申请类型（如：请假申请、行政事务等） |
@@ -127,14 +145,17 @@ Authorization: Bearer <登录时获取的JWT Token>
 | cc_persons | array | 抄送人列表 |
 | approve_status | number | 审批状态：1=待审批，2=审批中，3=已通过，4=已拒绝 |
 | status | number | 记录状态，1=正常，0=已删除 |
-| created_at | string | 创建时间 |
-| updated_at | string | 更新时间 |
+| createdAt | string | 创建时间（ISO 8601格式） |
+| updatedAt | string | 更新时间（ISO 8601格式） |
+| __v | number | Mongoose版本号 |
 
 ### 3.5 工资单 (Salary)
 
+**接口**: `GET /api/mobile_officing/salary/list`, `GET /api/mobile_officing/salary/info`
+
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| _id | string | 记录ID |
+| _id | string | 记录ID（MongoDB ObjectId） |
 | employee_id | string | 员工ID |
 | year | string | 年份 |
 | month | string | 月份 |
@@ -149,25 +170,33 @@ Authorization: Bearer <登录时获取的JWT Token>
 | status | number | 状态，1=已发放 |
 | job_number | string | 工号 |
 | department | string | 部门名称 |
-| created_at | string | 创建时间 |
-| updated_at | string | 更新时间 |
+| createdAt | string | 创建时间（ISO 8601格式） |
+| updatedAt | string | 更新时间（ISO 8601格式） |
+| __v | number | Mongoose版本号 |
 
 ### 3.6 公告 (Notice)
 
+**接口**: `GET /api/mobile_officing/notice/list`
+
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| _id | string | 记录ID |
+| _id | string | 记录ID（MongoDB ObjectId） |
 | title | string | 公告标题 |
 | date | string | 发布日期 |
 | read_count | number | 阅读次数 |
 | publish_department | string | 发布部门 |
 | content | string | 内容文件路径（拼接基础URL后可访问HTML页面） |
+| createdAt | string | 创建时间（ISO 8601格式） |
+| updatedAt | string | 更新时间（ISO 8601格式） |
+| __v | number | Mongoose版本号 |
 
 ### 3.7 聊天消息 (Message)
 
+**接口**: WebSocket `ws://localhost:3002/api/chat/connect`
+
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| _id | string | 消息ID |
+| _id | string | 消息ID（MongoDB ObjectId） |
 | media_type | string | 消息类型：time=时间分割线，text=文本，image=图片，video=视频 |
 | content | string | 消息内容（文本内容或媒体文件URL） |
 | is_sender | boolean | 是否为当前用户发送 |
@@ -178,7 +207,9 @@ Authorization: Bearer <登录时获取的JWT Token>
 | status | number | 消息状态：1=未读，2=已读 |
 | type | string | 聊天类型：private=私聊，group=群聊 |
 | avatar | string | 发送者头像URL |
-| created_at | string | 创建时间 |
+| createdAt | string | 创建时间（ISO 8601格式） |
+| updatedAt | string | 更新时间（ISO 8601格式） |
+| __v | number | Mongoose版本号 |
 
 ---
 
@@ -259,7 +290,9 @@ Authorization: Bearer <登录时获取的JWT Token>
     "sex": 1,
     "birthday": "1995-06-15",
     "createTime": "2024-01-01T00:00:00.000Z",
-    "score": 100
+    "score": 100,
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z"
   }
 }
 ```
@@ -460,8 +493,9 @@ GET /api/mobile_officing/user/smscode?phone=13800138000
       "entry_time": "2023-03-15",
       "remark": "表现优秀",
       "status": 1,
-      "created_at": "2024-01-01T00:00:00.000Z",
-      "updated_at": "2024-01-01T00:00:00.000Z"
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "__v": 0
     }
   ]
 }
@@ -488,6 +522,9 @@ GET /api/mobile_officing/user/smscode?phone=13800138000
       "_id": "65f1a2b3c4d5e6f7a8b9c0d0",
       "name": "技术部",
       "team": "研发一组",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "__v": 0,
       "employees": [
         {
           "_id": "65f1a2b3c4d5e6f7a8b9c0d1",
@@ -500,8 +537,11 @@ GET /api/mobile_officing/user/smscode?phone=13800138000
           "position": "前端工程师",
           "direct_leader": "李四",
           "entry_time": "2023-03-15",
-          "remark": "",
-          "status": 1
+          "remark": "表现优秀",
+          "status": 1,
+          "createdAt": "2024-01-01T00:00:00.000Z",
+          "updatedAt": "2024-01-01T00:00:00.000Z",
+          "__v": 0
         }
       ]
     }
@@ -561,8 +601,9 @@ GET /api/mobile_officing/process/list?type_id=1&page=1&pageSize=5
         "cc_persons": ["王五"],
         "approve_status": 3,
         "status": 1,
-        "created_at": "2024-01-15T10:00:00.000Z",
-        "updated_at": "2024-01-15T10:00:00.000Z"
+        "createdAt": "2024-01-15T10:00:00.000Z",
+        "updatedAt": "2024-01-15T10:00:00.000Z",
+        "__v": 0
       }
     ]
   }
@@ -666,8 +707,9 @@ GET /api/mobile_officing/salary/list?page=1&pageSize=5
         "status": 1,
         "job_number": "EMP001",
         "department": "技术部",
-        "created_at": "2024-03-01T00:00:00.000Z",
-        "updated_at": "2024-03-01T00:00:00.000Z"
+        "createdAt": "2024-03-01T00:00:00.000Z",
+        "updatedAt": "2024-03-01T00:00:00.000Z",
+        "__v": 0
       }
     ]
   }
@@ -716,8 +758,9 @@ GET /api/mobile_officing/salary/info?id=65f1a2b3c4d5e6f7a8b9c0f1
     "status": 1,
     "job_number": "EMP001",
     "department": "技术部",
-    "created_at": "2024-03-01T00:00:00.000Z",
-    "updated_at": "2024-03-01T00:00:00.000Z"
+    "createdAt": "2024-03-01T00:00:00.000Z",
+    "updatedAt": "2024-03-01T00:00:00.000Z",
+    "__v": 0
   }
 }
 ```
@@ -850,7 +893,9 @@ ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&i
       "status": 2,
       "type": "private",
       "avatar": "https://...",
-      "created_at": "2024-03-20T06:30:00.000Z"
+      "createdAt": "2024-03-20T06:30:00.000Z",
+      "updatedAt": "2024-03-20T06:30:00.000Z",
+      "__v": 0
     }
   ]
 }
@@ -899,8 +944,7 @@ ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&i
   "status": 1,
   "type": "private",
   "avatar": "https://...",
-  "nickname": "张三",
-  "created_at": "2024-03-20T14:30:00.000Z"
+  "nickname": "张三"
 }
 ```
 
@@ -917,8 +961,7 @@ ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&i
   "status": 1,
   "type": "private",
   "avatar": "https://...",
-  "nickname": "张三",
-  "created_at": "2024-03-20T14:35:00.000Z"
+  "nickname": "张三"
 }
 ```
 
@@ -935,10 +978,11 @@ ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&i
   "status": 1,
   "type": "private",
   "avatar": "https://...",
-  "nickname": "张三",
-  "created_at": "2024-03-20T14:40:00.000Z"
+  "nickname": "张三"
 }
 ```
+
+**说明**: 客户端发送消息时，`createdAt`和`updatedAt`由服务器自动添加，无需客户端传递。
 
 #### 4.7.5 服务器广播 - 新消息通知
 
@@ -962,7 +1006,9 @@ ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&i
     "status": 1,
     "type": "private",
     "avatar": "https://...",
-    "created_at": "2024-03-20T06:35:00.000Z"
+    "createdAt": "2024-03-20T06:35:00.000Z",
+    "updatedAt": "2024-03-20T06:35:00.000Z",
+    "__v": 0
   }
 }
 ```
