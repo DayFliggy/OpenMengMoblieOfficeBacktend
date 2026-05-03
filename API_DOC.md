@@ -20,10 +20,10 @@ WebSocket: ws://localhost:3001/api/chat/connect
 
 ### 2.2 认证方式
 
-除登录接口外，所有接口需要在请求头中携带 `token` 字段进行身份验证。
+除登录接口外，所有接口需要在请求头中携带 `Authorization` 字段进行身份验证。
 
 ```
-token: <登录时获取的JWT Token>
+Authorization: Bearer <登录时获取的JWT Token>
 ```
 
 ### 2.3 统一响应格式
@@ -50,7 +50,7 @@ token: <登录时获取的JWT Token>
 |--------|------|
 | 200 | 请求成功 |
 | 400 | 请求参数错误 |
-| 401 | 未登录或token无效 |
+| 401 | 未登录或token无效或Authorization格式错误 |
 | 404 | 资源不存在 |
 | 500 | 服务器内部错误 |
 

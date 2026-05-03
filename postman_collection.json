@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "移动办公后台接口",
-    "description": "Mobile Office App 后端 API 测试集合\n\n使用步骤：\n1. 先运行「用户登录」接口获取 token\n2. Collection 变量会自动保存 token，后续接口自动携带\n3. 依次测试其他接口",
+    "description": "Mobile Office App 后端 API 测试集合\n\n使用步骤：\n1. 先运行「用户登录」接口获取 token\n2. Collection 变量会自动保存 token，后续接口通过 Authorization: Bearer <token> 携带\n3. 依次测试其他接口",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -77,9 +77,9 @@
             "method": "GET",
             "header": [
               {
-                "key": "token",
-                "value": "{{token}}",
-                "description": "登录时获取的JWT Token"
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "登录时获取的JWT Token，格式：Bearer <token>"
               }
             ],
             "url": {
@@ -87,7 +87,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["user", "info"]
             },
-            "description": "获取当前登录用户的详细信息\n\n需要在请求头中携带 token\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"获取成功\",\n  \"data\": {\n    \"userid\": \"user_b7d8955c-...\",\n    \"username\": \"张三\",\n    \"loginname\": \"17704051019\",\n    \"tel\": \"17704051019\",\n    \"nickname\": \"张三\",\n    \"sex\": 1,\n    \"score\": 100\n  }\n}\n```"
+            "description": "获取当前登录用户的详细信息\n\n需要在请求头中携带 Authorization: Bearer <token>\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"获取成功\",\n  \"data\": {\n    \"userid\": \"user_b7d8955c-...\",\n    \"username\": \"张三\",\n    \"loginname\": \"17704051019\",\n    \"tel\": \"17704051019\",\n    \"nickname\": \"张三\",\n    \"sex\": 1,\n    \"score\": 100\n  }\n}\n```"
           },
           "event": [
             {
@@ -152,8 +152,8 @@
                 "value": "application/json"
               },
               {
-                "key": "token",
-                "value": "{{token}}"
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "body": {
@@ -183,8 +183,8 @@
                 "value": "application/json"
               },
               {
-                "key": "token",
-                "value": "{{token}}"
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "body": {
@@ -257,8 +257,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "token",
-                "value": "{{token}}"
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "url": {
@@ -291,8 +291,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "token",
-                "value": "{{token}}"
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "url": {
@@ -314,8 +314,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "token",
-                "value": "{{token}}"
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "url": {
@@ -366,8 +366,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "token",
-                "value": "{{token}}"
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "url": {
@@ -399,8 +399,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "token",
-                "value": "{{token}}"
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "url": {
@@ -436,8 +436,8 @@
                 "value": "application/json"
               },
               {
-                "key": "token",
-                "value": "{{token}}"
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "body": {
@@ -481,8 +481,8 @@
                 "value": "application/json"
               },
               {
-                "key": "token",
-                "value": "{{token}}"
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "body": {
@@ -513,8 +513,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "token",
-                "value": "{{token}}"
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "url": {
@@ -560,8 +560,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "token",
-                "value": "{{token}}"
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "url": {
@@ -590,8 +590,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "token",
-                "value": "{{token}}"
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
             ],
             "url": {

@@ -118,10 +118,10 @@ npm run dev
 
 ## 认证方式
 
-除登录接口外，所有接口需在请求头携带 `token`：
+除登录接口外，所有接口需在请求头携带 `Authorization`：
 
 ```
-token: <登录时获取的 JWT Token>
+Authorization: Bearer <登录时获取的 JWT Token>
 ```
 
 ## 统一响应格式
@@ -138,7 +138,7 @@ token: <登录时获取的 JWT Token>
 |--------|------|
 | 200 | 成功 |
 | 400 | 参数错误 |
-| 401 | 未登录或 token 无效 |
+| 401 | 未登录或 token 无效或 Authorization 格式错误 |
 | 404 | 资源不存在 |
 | 500 | 服务器错误 |
 
