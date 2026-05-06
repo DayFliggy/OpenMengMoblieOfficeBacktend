@@ -673,7 +673,7 @@ const seedData = async () => {
       {
         user_id: senderId,
         nickname: '张三',
-        avatar: avatarZs,
+        avatar: '',
         role: 'owner',
         joined_at: new Date('2024-03-18T06:20:00.000Z'),
         last_read_at: new Date('2024-03-19T06:10:00.000Z')
@@ -681,7 +681,7 @@ const seedData = async () => {
       {
         user_id: receiverId,
         nickname: '张一山',
-        avatar: user2.avatar,
+        avatar: '',
         role: 'member',
         joined_at: new Date('2024-03-18T06:20:00.000Z'),
         last_read_at: new Date('2024-03-20T02:25:00.000Z')
@@ -700,7 +700,7 @@ const seedData = async () => {
       {
         user_id: senderId,
         nickname: '张三',
-        avatar: avatarZs,
+        avatar: '',
         role: 'owner',
         joined_at: new Date('2024-03-20T01:00:00.000Z'),
         last_read_at: new Date('2024-03-20T01:10:00.000Z')
@@ -708,7 +708,7 @@ const seedData = async () => {
       {
         user_id: user3.userid,
         nickname: '李华',
-        avatar: user3.avatar,
+        avatar: '',
         role: 'member',
         joined_at: new Date('2024-03-20T01:00:00.000Z'),
         last_read_at: new Date('2024-03-20T03:40:00.000Z')
@@ -727,7 +727,7 @@ const seedData = async () => {
       {
         user_id: senderId,
         nickname: '张三',
-        avatar: avatarZs,
+        avatar: '',
         role: 'owner',
         joined_at: new Date('2024-03-15T08:00:00.000Z'),
         last_read_at: new Date('2024-03-15T08:15:00.000Z')
@@ -735,7 +735,7 @@ const seedData = async () => {
       {
         user_id: user4.userid,
         nickname: '赵雯',
-        avatar: user4.avatar,
+        avatar: '',
         role: 'member',
         joined_at: new Date('2024-03-15T08:00:00.000Z'),
         last_read_at: new Date('2024-03-15T08:15:00.000Z')
@@ -756,7 +756,7 @@ const seedData = async () => {
       {
         user_id: senderId,
         nickname: '张三',
-        avatar: avatarZs,
+        avatar: '',
         role: 'owner',
         joined_at: new Date('2024-03-20T00:30:00.000Z'),
         last_read_at: new Date('2024-03-20T00:35:00.000Z')
@@ -764,7 +764,7 @@ const seedData = async () => {
       {
         user_id: user2.userid,
         nickname: '张一山',
-        avatar: user2.avatar,
+        avatar: '',
         role: 'member',
         joined_at: new Date('2024-03-20T00:30:00.000Z'),
         last_read_at: new Date('2024-03-20T04:10:00.000Z')
@@ -772,7 +772,7 @@ const seedData = async () => {
       {
         user_id: user3.userid,
         nickname: '李华',
-        avatar: user3.avatar,
+        avatar: '',
         role: 'member',
         joined_at: new Date('2024-03-20T00:30:00.000Z'),
         last_read_at: new Date('2024-03-20T04:10:00.000Z')
@@ -780,7 +780,7 @@ const seedData = async () => {
       {
         user_id: user5.userid,
         nickname: '王五',
-        avatar: user5.avatar,
+        avatar: '',
         role: 'admin',
         joined_at: new Date('2024-03-20T00:30:00.000Z'),
         last_read_at: new Date('2024-03-20T04:10:00.000Z')
