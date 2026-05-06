@@ -12,6 +12,7 @@ const processRoutes = require('./routes/process')
 const salaryRoutes = require('./routes/salary')
 const noticeRoutes = require('./routes/notice')
 const fileRoutes = require('./routes/file')
+const chatRoutes = require('./routes/chat')
 
 const app = express()
 const PORT = process.env.PORT || 3002
@@ -32,6 +33,7 @@ app.use('/api/mobile_officing/process', processRoutes)
 app.use('/api/mobile_officing/salary', salaryRoutes)
 app.use('/api/mobile_officing/notice', noticeRoutes)
 app.use('/admin/file', fileRoutes)
+app.use('/api/mobile_officing/chat', chatRoutes)
 
 // Health check
 app.get('/', (req, res) => {

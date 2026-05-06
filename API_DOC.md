@@ -190,7 +190,36 @@ Authorization: Bearer <登录时获取的JWT Token>
 | updatedAt | string | 更新时间（ISO 8601格式） |
 | __v | number | Mongoose版本号 |
 
-### 3.7 聊天消息 (Message)
+### 3.7 聊天房间 (Room)
+
+**接口**: `GET /api/mobile_officing/chat/rooms`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| _id | string | 记录ID（MongoDB ObjectId） |
+| room_id | string | 房间唯一标识（UUID格式） |
+| type | string | 房间类型：private=私聊，group=群聊 |
+| name | string | 房间名称（群聊名称，私聊为空） |
+| avatar | string | 房间头像（群聊头像，私聊为空） |
+| members | array | 成员列表，见下方成员子结构 |
+| last_message | string | 最后一条消息预览 |
+| last_message_time | string | 最后消息时间（ISO 8601格式） |
+| created_by | string | 创建者用户ID |
+| createdAt | string | 创建时间（ISO 8601格式） |
+| updatedAt | string | 更新时间（ISO 8601格式） |
+
+**成员子结构 (members[])**:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| user_id | string | 用户ID |
+| nickname | string | 用户昵称 |
+| avatar | string | 用户头像URL |
+| role | string | 角色：owner=群主，admin=管理员，member=普通成员 |
+| joined_at | string | 加入时间 |
+| last_read_at | string | 最后已读时间（用于计算未读数） |
+
+### 3.8 聊天消息 (Message)
 
 **接口**: WebSocket `ws://localhost:3002/api/chat/connect`
 
@@ -199,7 +228,7 @@ Authorization: Bearer <登录时获取的JWT Token>
 | _id | string | 消息ID（MongoDB ObjectId） |
 | media_type | string | 消息类型：time=时间分割线，text=文本，image=图片，video=视频 |
 | content | string | 消息内容（文本内容或媒体文件URL） |
-| is_sender | boolean | 是否为当前用户发送 |
+| is_sender | boolean | 是否为当前用户发送（由服务端根据接收方自动计算） |
 | nickname | string | 发送者昵称 |
 | receiver_id | string | 接收者ID |
 | room | string | 聊天房间ID |
@@ -848,31 +877,280 @@ Content-Type: image/png
 
 ---
 
-### 4.7 WebSocket 聊天接口
+### 4.7 聊天REST接口
 
-#### 4.7.1 连接地址
+#### 4.7.1 创建或获取房间
+
+- **请求方法**: POST
+- **请求URL**: `/api/mobile_officing/chat/room`
+- **是否需要认证**: 是
+
+**请求参数**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| type | string | 是 | 房间类型：private=私聊，group=群聊 |
+| targetUserId | string | 私聊必填 | 目标用户ID（私聊时使用） |
+| name | string | 群聊必填 | 群聊名称 |
+| memberIds | array | 群聊必填 | 群成员用户ID数组（不含当前用户，会自动添加） |
+
+**私聊请求示例**:
+
+```json
+{
+  "type": "private",
+  "targetUserId": "user_da8add51-4bcc-4d82-a4c3-dcd7a44b527b"
+}
+```
+
+**群聊请求示例**:
+
+```json
+{
+  "type": "group",
+  "name": "项目讨论组",
+  "memberIds": ["user_da8add51-4bcc-4d82-a4c3-dcd7a44b527b", "user_xxx"]
+}
+```
+
+**响应示例**:
+
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "_id": "65f1a2b3c4d5e6f7a8b9c3a1",
+    "room_id": "30908286-466b-485e-b673-332db053bd18",
+    "type": "private",
+    "name": "",
+    "avatar": "",
+    "members": [
+      {
+        "user_id": "user_b7d8955c-8339-458e-a13b-461b1271e5d4",
+        "nickname": "张三",
+        "avatar": "https://...",
+        "role": "owner",
+        "joined_at": "2024-03-20T06:30:00.000Z",
+        "last_read_at": "2024-03-20T06:30:00.000Z"
+      },
+      {
+        "user_id": "user_da8add51-4bcc-4d82-a4c3-dcd7a44b527b",
+        "nickname": "张一山",
+        "avatar": "https://...",
+        "role": "member",
+        "joined_at": "2024-03-20T06:30:00.000Z",
+        "last_read_at": "2024-03-20T06:30:00.000Z"
+      }
+    ],
+    "last_message": "",
+    "last_message_time": null,
+    "created_by": "user_b7d8955c-8339-458e-a13b-461b1271e5d4",
+    "createdAt": "2024-03-20T06:30:00.000Z",
+    "updatedAt": "2024-03-20T06:30:00.000Z"
+  }
+}
+```
+
+**说明**:
+- 私聊具有幂等性：同一对用户重复请求会返回已存在的房间
+- `targetUserId` 不能是当前用户自己的ID
+- 群聊会自动将当前用户加入成员列表并设为 `owner` 角色
+
+**错误响应**:
+
+| 场景 | code | message |
+|------|------|---------|
+| 聊天类型无效 | 400 | 聊天类型无效 |
+| 缺少目标用户ID | 400 | 缺少目标用户ID |
+| 不能和自己聊天 | 400 | 不能和自己聊天 |
+| 目标用户不存在 | 404 | 目标用户不存在 |
+| 缺少群聊名称 | 400 | 缺少群聊名称 |
+| 缺少群成员 | 400 | 缺少群成员 |
+
+---
+
+#### 4.7.2 获取会话列表
+
+- **请求方法**: GET
+- **请求URL**: `/api/mobile_officing/chat/rooms`
+- **是否需要认证**: 是
+
+**请求参数**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | number | 否 | 页码，默认1 |
+| pageSize | number | 否 | 每页条数，默认20 |
+
+**请求示例**:
 
 ```
-ws://localhost:3002/api/chat/connect?room={房间ID}&id={用户ID}&type={聊天类型}
+GET /api/mobile_officing/chat/rooms?page=1&pageSize=10
+```
+
+**响应示例**:
+
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "total": 4,
+    "items": [
+      {
+        "_id": "65f1a2b3c4d5e6f7a8b9c3a1",
+        "room_id": "c9d0e1f2-9999-aaaa-bbbb-ccccddddeeee",
+        "type": "group",
+        "name": "技术部交流群",
+        "avatar": "",
+        "last_message": "我的也差不多了，下午提交",
+        "last_message_time": "2024-03-20T04:10:00.000Z",
+        "unread_count": 3
+      },
+      {
+        "_id": "65f1a2b3c4d5e6f7a8b9c3a2",
+        "room_id": "a1b2c3d4-1111-2222-3333-444455556666",
+        "type": "private",
+        "name": "李华",
+        "avatar": "https://...",
+        "last_message": "好的，那下午见",
+        "last_message_time": "2024-03-20T03:40:00.000Z",
+        "unread_count": 3
+      },
+      {
+        "_id": "65f1a2b3c4d5e6f7a8b9c3a3",
+        "room_id": "30908286-466b-485e-b673-332db053bd18",
+        "type": "private",
+        "name": "张一山",
+        "avatar": "https://...",
+        "last_message": "已经写好了，下午发给你看看",
+        "last_message_time": "2024-03-20T02:25:00.000Z",
+        "unread_count": 6
+      },
+      {
+        "_id": "65f1a2b3c4d5e6f7a8b9c3a4",
+        "room_id": "e5f6a7b8-5555-6666-7777-888899990000",
+        "type": "private",
+        "name": "赵雯",
+        "avatar": "https://...",
+        "last_message": "收到了，谢谢",
+        "last_message_time": "2024-03-15T08:12:00.000Z",
+        "unread_count": 0
+      }
+    ]
+  }
+}
+```
+
+**说明**:
+- 列表按 `last_message_time` 降序排列（最近有消息的房间排在最前）
+- 私聊房间的 `name` 和 `avatar` 自动替换为对方的昵称和头像
+- `unread_count` 为当前用户的未读消息数（基于 `last_read_at` 计算）
+
+---
+
+#### 4.7.3 获取历史消息
+
+- **请求方法**: GET
+- **请求URL**: `/api/mobile_officing/chat/room/:roomId/messages`
+- **是否需要认证**: 是
+
+**请求参数**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| roomId | string | 是 | 房间ID（URL路径参数） |
+| before | string | 否 | 游标分页：传入ISO时间戳，获取该时间之前的消息 |
+| pageSize | number | 否 | 每页条数，默认20 |
+| page | number | 否 | 页码，默认1（未传`before`时使用） |
+
+**请求示例**:
+
+```
+GET /api/mobile_officing/chat/room/30908286-466b-485e-b673-332db053bd18/messages?pageSize=10
+
+GET /api/mobile_officing/chat/room/30908286-466b-485e-b673-332db053bd18/messages?before=2024-03-20T06:30:00.000Z&pageSize=10
+```
+
+**响应示例**:
+
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "total": 21,
+    "items": [
+      {
+        "_id": "65f1a2b3c4d5e6f7a8b9c2a1",
+        "media_type": "text",
+        "content": "早啊，昨天会议的纪要我整理好了",
+        "is_sender": false,
+        "nickname": "张一山",
+        "receiver_id": "user_b7d8955c-8339-458e-a13b-461b1271e5d4",
+        "room": "30908286-466b-485e-b673-332db053bd18",
+        "sender_id": "user_da8add51-4bcc-4d82-a4c3-dcd7a44b527b",
+        "status": 1,
+        "type": "private",
+        "avatar": "https://...",
+        "createdAt": "2024-03-20T02:16:00.000Z",
+        "updatedAt": "2024-03-20T02:16:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+**说明**:
+- 消息按时间正序返回（旧消息在前）
+- 推荐使用游标分页（`before`参数）实现无限滚动加载，避免页码偏移问题
+- 当前用户必须是房间成员，否则返回 404
+
+**错误响应**:
+
+| 场景 | code | message |
+|------|------|---------|
+| 房间不存在或无权限 | 404 | 房间不存在或无权限访问 |
+
+---
+
+### 4.8 WebSocket 聊天接口
+
+#### 4.8.1 连接地址
+
+```
+ws://localhost:3002/api/chat/connect?room={房间ID}&token={JWT令牌}
 ```
 
 **连接参数**:
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| room | string | 是 | 聊天房间ID（UUID格式） |
-| id | string | 是 | 当前用户ID |
-| type | string | 否 | 聊天类型：private=私聊，group=群聊。默认private |
+| room | string | 是 | 聊天房间ID（通过 `POST /api/mobile_officing/chat/room` 获取） |
+| token | string | 是 | JWT认证令牌（登录时获取） |
 
 **连接示例**:
 
 ```
-ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&id=user_b7d8955c-8339-458e-a13b-461b1271e5d4&type=private
+ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-#### 4.7.2 服务器推送 - 历史消息
+**认证说明**:
+- 连接时服务端会验证JWT令牌的有效性
+- 验证通过后会检查用户是否为该房间的成员
+- 认证失败时连接会被关闭（code: 1008）
+- 用户ID从JWT中解析，无需客户端传递
 
-连接成功后，服务器自动推送第一页历史消息。
+**连接关闭码**:
+
+| 关闭码 | 说明 |
+|--------|------|
+| 1008 | 缺少参数、token无效/过期、用户不存在、非房间成员 |
+
+#### 4.8.2 服务器推送 - 历史消息
+
+连接成功后，服务器自动推送第一页历史消息（5条）。同时自动将当前用户在该房间的 `last_read_at` 更新为当前时间，标记所有消息为已读。
 
 **接收消息格式**:
 
@@ -884,17 +1162,17 @@ ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&i
     {
       "_id": "65f1a2b3c4d5e6f7a8b9c2a1",
       "media_type": "text",
-      "content": "你好，在吗？",
-      "is_sender": false,
-      "nickname": "张一山",
-      "receiver_id": "user_b7d8955c-8339-458e-a13b-461b1271e5d4",
+      "content": "已经写好了，下午发给你看看",
+      "is_sender": true,
+      "nickname": "张三",
+      "receiver_id": "user_da8add51-4bcc-4d82-a4c3-dcd7a44b527b",
       "room": "30908286-466b-485e-b673-332db053bd18",
-      "sender_id": "user_da8add51-4bcc-4d82-a4c3-dcd7a44b527b",
-      "status": 2,
+      "sender_id": "user_b7d8955c-8339-458e-a13b-461b1271e5d4",
+      "status": 1,
       "type": "private",
       "avatar": "https://...",
-      "createdAt": "2024-03-20T06:30:00.000Z",
-      "updatedAt": "2024-03-20T06:30:00.000Z",
+      "createdAt": "2024-03-20T02:25:00.000Z",
+      "updatedAt": "2024-03-20T02:25:00.000Z",
       "__v": 0
     }
   ]
@@ -909,7 +1187,7 @@ ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&i
 }
 ```
 
-#### 4.7.3 客户端请求 - 获取更多历史消息
+#### 4.8.3 客户端请求 - 获取更多历史消息
 
 **发送消息格式**:
 
@@ -929,7 +1207,7 @@ ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&i
 | pageSize | number | 每页消息数量 |
 | room | string | 聊天房间ID |
 
-#### 4.7.4 客户端发送 - 发送聊天消息
+#### 4.8.4 客户端发送 - 发送聊天消息
 
 **发送文本消息**:
 
@@ -984,9 +1262,9 @@ ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&i
 
 **说明**: 客户端发送消息时，`createdAt`和`updatedAt`由服务器自动添加，无需客户端传递。
 
-#### 4.7.5 服务器广播 - 新消息通知
+#### 4.8.5 服务器广播 - 新消息通知
 
-当房间内有新消息时，服务器会广播给房间内所有连接的客户端。
+当房间内有新消息时，服务器会广播给房间内所有连接的客户端。`is_sender` 字段由服务端根据每个接收方自动计算（比较 `sender_id` 与当前连接用户的ID），无需客户端传递。
 
 **广播消息格式**:
 
@@ -1021,27 +1299,40 @@ ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&i
 
 ```bash
 cd server
-node seed/seed.js
+npm run seed
 ```
 
 ### 测试账号
 
-| 字段 | 值 |
-|------|------|
-| 登录账号 | 17704051019 |
-| 登录密码 | 123456 |
-| 用户昵称 | 张三 |
-| 用户ID | user_b7d8955c-8339-458e-a13b-461b1271e5d4 |
+| 用户 | 登录账号 | 登录密码 | 用户ID |
+|------|----------|----------|--------|
+| 张三 | 17704051019 | 123456 | user_b7d8955c-8339-458e-a13b-461b1271e5d4 |
+| 张一山 | 13800138001 | 123456 | user_da8add51-4bcc-4d82-a4c3-dcd7a44b527b |
+| 李华 | 13800138002 | 123456 | user_a1b2c3d4-1111-2222-3333-444455556666 |
+| 赵雯 | 13800138003 | 123456 | user_e5f6a7b8-5555-6666-7777-888899990000 |
+| 王五 | 13800138004 | 123456 | user_c9d0e1f2-9999-aaaa-bbbb-ccccddddeeee |
 
 ### 预置数据内容
 
-- **用户**: 1个测试用户（张三）
+- **用户**: 5个测试用户
+  - 张三（loginname: 17704051019，密码: 123456）
+  - 张一山（loginname: 13800138001）
+  - 李华（loginname: 13800138002）
+  - 赵雯（loginname: 13800138003）
+  - 王五（loginname: 13800138004）
 - **部门**: 3个部门（技术部、人事部、行政部）
 - **员工**: 7名员工，分布在3个部门
 - **审批记录**: 5条审批记录（包含各种审批状态）
 - **工资单**: 3个月的工资记录（2024年1-3月）
 - **公告**: 3条公司公告（含HTML内容页面）
-- **聊天消息**: 7条测试聊天记录
+- **聊天房间**: 4个房间
+  - 张一山私聊（6条未读，最近活跃）
+  - 李华私聊（3条未读，最近活跃）
+  - 赵雯私聊（0条未读，历史对话）
+  - 技术部交流群（群聊，4人，3条未读）
+- **聊天消息**: 38条测试聊天记录
+  - 消息类型：文本(text)、图片(image)、视频(video)、时间分隔线(time)
+  - 覆盖场景：私聊/群聊、已读/未读、多种媒体类型
 
 ---
 

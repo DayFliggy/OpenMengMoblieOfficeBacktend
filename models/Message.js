@@ -13,4 +13,6 @@ const messageSchema = new mongoose.Schema({
   avatar: { type: String, default: '' }
 }, { timestamps: true })
 
+messageSchema.index({ room: 1, createdAt: -1 })
+
 module.exports = mongoose.model('Message', messageSchema)

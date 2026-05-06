@@ -19,6 +19,11 @@
       "key": "token",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "roomId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -658,6 +663,242 @@
                   "    pm.expect(jsonData.code).to.equal(200);",
                   "    pm.expect(jsonData.data).to.have.property('url');",
                   "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "七、聊天模块",
+      "item": [
+        {
+          "name": "14. 创建私聊房间",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"private\",\n  \"targetUserId\": \"user_da8add51-4bcc-4d82-a4c3-dcd7a44b527b\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/room",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "room"]
+            },
+            "description": "创建或获取私聊房间（幂等接口）\n\n同一对用户重复请求会返回已存在的房间\n\n请求体：\n- type: \"private\"\n- targetUserId: 目标用户ID\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"创建成功\",\n  \"data\": {\n    \"room_id\": \"30908286-...\",\n    \"type\": \"private\",\n    \"members\": [...]\n  }\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.code === 200 && jsonData.data && jsonData.data.room_id) {",
+                  "    pm.collectionVariables.set('roomId', jsonData.data.room_id);",
+                  "    console.log('Room ID saved: ' + jsonData.data.room_id);",
+                  "}",
+                  "pm.test('创建/获取私聊房间成功', function () {",
+                  "    pm.expect(jsonData.code).to.equal(200);",
+                  "    pm.expect(jsonData.data).to.have.property('room_id');",
+                  "    pm.expect(jsonData.data.type).to.equal('private');",
+                  "    pm.expect(jsonData.data.members).to.be.an('array');",
+                  "    pm.expect(jsonData.data.members.length).to.equal(2);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "15. 创建群聊房间",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"group\",\n  \"name\": \"项目讨论组\",\n  \"memberIds\": [\"user_da8add51-4bcc-4d82-a4c3-dcd7a44b527b\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chat/room",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "room"]
+            },
+            "description": "创建群聊房间\n\n请求体：\n- type: \"group\"\n- name: 群聊名称\n- memberIds: 成员用户ID数组（当前用户会自动添加）\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"创建成功\",\n  \"data\": {\n    \"room_id\": \"新生成的UUID\",\n    \"type\": \"group\",\n    \"name\": \"项目讨论组\",\n    \"members\": [...]\n  }\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('创建群聊房间成功', function () {",
+                  "    pm.expect(jsonData.code).to.equal(200);",
+                  "    pm.expect(jsonData.data).to.have.property('room_id');",
+                  "    pm.expect(jsonData.data.type).to.equal('group');",
+                  "    pm.expect(jsonData.data.name).to.equal('项目讨论组');",
+                  "    pm.expect(jsonData.data.members.length).to.be.above(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "16. 获取会话列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/rooms?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "rooms"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "页码"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10",
+                  "description": "每页条数"
+                }
+              ]
+            },
+            "description": "获取当前用户的会话列表\n\n列表按最后消息时间降序排列\n私聊房间的 name 和 avatar 自动替换为对方信息\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"获取成功\",\n  \"data\": {\n    \"total\": 4,\n    \"items\": [\n      {\n        \"room_id\": \"c9d0e1f2-...\",\n        \"type\": \"group\",\n        \"name\": \"技术部交流群\",\n        \"last_message\": \"我的也差不多了，下午提交\",\n        \"unread_count\": 3\n      },\n      {\n        \"room_id\": \"a1b2c3d4-...\",\n        \"type\": \"private\",\n        \"name\": \"李华\",\n        \"last_message\": \"好的，那下午见\",\n        \"unread_count\": 3\n      },\n      {\n        \"room_id\": \"30908286-...\",\n        \"type\": \"private\",\n        \"name\": \"张一山\",\n        \"last_message\": \"已经写好了，下午发给你看看\",\n        \"unread_count\": 6\n      },\n      {\n        \"room_id\": \"e5f6a7b8-...\",\n        \"type\": \"private\",\n        \"name\": \"赵雯\",\n        \"last_message\": \"收到了，谢谢\",\n        \"unread_count\": 0\n      }\n    ]\n  }\n}\n```\n\n测试数据包含：\n- 4个房间：3个私聊 + 1个群聊\n- 未读数：0、3、3、6（覆盖不同场景）\n- 私聊显示对方昵称，群聊显示群名"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('获取会话列表成功', function () {",
+                  "    pm.expect(jsonData.code).to.equal(200);",
+                  "    pm.expect(jsonData.data).to.have.property('total');",
+                  "    pm.expect(jsonData.data).to.have.property('items');",
+                  "    pm.expect(jsonData.data.items).to.be.an('array');",
+                  "});",
+                  "if (jsonData.data && jsonData.data.items && jsonData.data.items.length > 0) {",
+                  "    pm.test('会话包含必要字段', function () {",
+                  "        var firstRoom = jsonData.data.items[0];",
+                  "        pm.expect(firstRoom).to.have.property('room_id');",
+                  "        pm.expect(firstRoom).to.have.property('type');",
+                  "        pm.expect(firstRoom).to.have.property('unread_count');",
+                  "        pm.expect(firstRoom).to.have.property('last_message');",
+                  "        pm.expect(firstRoom).to.have.property('last_message_time');",
+                  "    });",
+                  "    pm.test('私聊房间显示对方昵称', function () {",
+                  "        var firstRoom = jsonData.data.items[0];",
+                  "        if (firstRoom.type === 'private') {",
+                  "            pm.expect(firstRoom.name).to.not.be.empty;",
+                  "        }",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "17. 获取历史消息",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/room/{{roomId}}/messages?pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "room", "{{roomId}}", "messages"],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "10",
+                  "description": "每页条数"
+                },
+                {
+                  "key": "before",
+                  "value": "",
+                  "description": "游标分页：传入ISO时间戳获取该时间之前的消息（可选）"
+                }
+              ]
+            },
+            "description": "获取指定房间的历史消息\n\n需要先通过「创建私聊房间」获取房间ID（已自动保存到变量）\n\n请求参数：\n- roomId: 房间ID（URL路径参数）\n- pageSize: 每页条数（默认20）\n- before: 游标分页，ISO时间戳（可选）\n\n响应成功示例：\n```json\n{\n  \"code\": 200,\n  \"message\": \"获取成功\",\n  \"data\": {\n    \"total\": 21,\n    \"items\": [\n      {\n        \"media_type\": \"text\",\n        \"content\": \"早啊，昨天会议的纪要我整理好了\",\n        \"sender_id\": \"user_da8add51-...\",\n        \"room\": \"30908286-...\",\n        \"is_sender\": false,\n        \"nickname\": \"张一山\",\n        \"status\": 1\n      }\n    ]\n  }\n}\n```\n\n测试数据包含：\n- 21条消息，跨越3天（2024-03-18 ~ 2024-03-20）\n- 消息类型：text、image、video、time（时间分隔线）\n- 已读(status=2)15条，未读(status=1)6条"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.test('获取历史消息成功', function () {",
+                  "    pm.expect(jsonData.code).to.equal(200);",
+                  "    pm.expect(jsonData.data).to.have.property('total');",
+                  "    pm.expect(jsonData.data).to.have.property('items');",
+                  "    pm.expect(jsonData.data.items).to.be.an('array');",
+                  "});",
+                  "if (jsonData.data && jsonData.data.items && jsonData.data.items.length > 0) {",
+                  "    pm.test('消息包含必要字段', function () {",
+                  "        var firstMsg = jsonData.data.items[0];",
+                  "        pm.expect(firstMsg).to.have.property('media_type');",
+                  "        pm.expect(firstMsg).to.have.property('content');",
+                  "        pm.expect(firstMsg).to.have.property('sender_id');",
+                  "        pm.expect(firstMsg).to.have.property('room');",
+                  "        pm.expect(firstMsg).to.have.property('is_sender');",
+                  "        pm.expect(firstMsg).to.have.property('status');",
+                  "    });",
+                  "    pm.test('消息按时间正序排列', function () {",
+                  "        var items = jsonData.data.items;",
+                  "        if (items.length >= 2) {",
+                  "            var first = new Date(items[0].createdAt).getTime();",
+                  "            var last = new Date(items[items.length - 1].createdAt).getTime();",
+                  "            pm.expect(first).to.be.at.most(last);",
+                  "        }",
+                  "    });",
+                  "}"
                 ],
                 "type": "text/javascript"
               }
