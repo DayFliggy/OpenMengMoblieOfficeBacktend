@@ -201,7 +201,13 @@ router.get('/room/:roomId/messages', authMiddleware, async (req, res) => {
     // 反转为时间正序
     messages.reverse()
 
-    res.json({ code: 200, message: '获取成功', data: { total, items: messages } })
+    // 为当前用户动态计算 is_sender
+    const items = messages.map(msg => ({
+      ...msg,
+      is_sender: msg.sender_id === userId
+    }))
+
+    res.json({ code: 200, message: '获取成功', data: { total, items } })
   } catch (err) {
     res.json({ code: 500, message: '服务器错误: ' + err.message })
   }

@@ -228,7 +228,7 @@ Authorization: Bearer <登录时获取的JWT Token>
 | _id | string | 消息ID（MongoDB ObjectId） |
 | media_type | string | 消息类型：time=时间分割线，text=文本，image=图片，video=视频 |
 | content | string | 消息内容（文本内容或媒体文件URL） |
-| is_sender | boolean | 是否为当前用户发送（由服务端根据接收方自动计算） |
+| is_sender | boolean | 是否为当前用户发送（由服务端根据 `sender_id` 与当前用户动态计算，数据库中不存储此值） |
 | nickname | string | 发送者昵称 |
 | receiver_id | string | 接收者ID |
 | room | string | 聊天房间ID |
@@ -1106,6 +1106,7 @@ GET /api/mobile_officing/chat/room/30908286-466b-485e-b673-332db053bd18/messages
 - 消息按时间正序返回（旧消息在前）
 - 推荐使用游标分页（`before`参数）实现无限滚动加载，避免页码偏移问题
 - 当前用户必须是房间成员，否则返回 404
+- `is_sender` 由服务端根据 `sender_id` 与当前登录用户动态计算，客户端无需处理
 
 **错误响应**:
 
@@ -1116,6 +1117,8 @@ GET /api/mobile_officing/chat/room/30908286-466b-485e-b673-332db053bd18/messages
 ---
 
 ### 4.8 WebSocket 聊天接口
+
+WebSocket 用于实时消息的发送和接收。一个 WebSocket 连接对应一个聊天房间，客户端切换房间时需要断开重连。
 
 #### 4.8.1 连接地址
 
@@ -1128,7 +1131,7 @@ ws://localhost:3002/api/chat/connect?room={房间ID}&token={JWT令牌}
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | room | string | 是 | 聊天房间ID（通过 `POST /api/mobile_officing/chat/room` 获取） |
-| token | string | 是 | JWT认证令牌（登录时获取） |
+| token | string | 是 | JWT认证令牌（登录时获取，不含 `Bearer ` 前缀） |
 
 **连接示例**:
 
@@ -1136,23 +1139,31 @@ ws://localhost:3002/api/chat/connect?room={房间ID}&token={JWT令牌}
 ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-**认证说明**:
-- 连接时服务端会验证JWT令牌的有效性
-- 验证通过后会检查用户是否为该房间的成员
-- 认证失败时连接会被关闭（code: 1008）
-- 用户ID从JWT中解析，无需客户端传递
+**认证流程**:
+1. 从 URL 参数中解析 `room` 和 `token`
+2. 验证 JWT 令牌有效性（使用与 HTTP 接口相同的 `JWT_SECRET`）
+3. 从 JWT 中解析 `userid`，验证用户是否存在
+4. 验证用户是否为该房间的成员
+5. 认证通过后，更新该用户在房间内的 `last_read_at` 为当前时间（标记已读）
+6. 自动推送该房间最新的 5 条历史消息（按时间正序排列）
 
 **连接关闭码**:
 
 | 关闭码 | 说明 |
 |--------|------|
-| 1008 | 缺少参数、token无效/过期、用户不存在、非房间成员 |
+| 1008 | 缺少 `room` 或 `token` 参数 |
+| 1008 | token 无效或已过期 |
+| 1008 | 用户不存在 |
+| 1008 | 用户不是该房间成员 |
+| 1011 | 服务端内部错误 |
 
-#### 4.8.2 服务器推送 - 历史消息
+---
 
-连接成功后，服务器自动推送第一页历史消息（5条）。同时自动将当前用户在该房间的 `last_read_at` 更新为当前时间，标记所有消息为已读。
+#### 4.8.2 服务端推送 - 连接成功后的历史消息
 
-**接收消息格式**:
+连接成功后，服务器自动推送该房间最新的 5 条历史消息（按时间正序排列，即从旧到新）。
+
+**接收格式**:
 
 ```json
 {
@@ -1179,7 +1190,7 @@ ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&t
 }
 ```
 
-**无更多历史消息时**:
+**无历史消息时**:
 
 ```json
 {
@@ -1187,9 +1198,13 @@ ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&t
 }
 ```
 
+---
+
 #### 4.8.3 客户端请求 - 获取更多历史消息
 
-**发送消息格式**:
+连接建立后，客户端可主动请求更多历史消息用于滚动加载。
+
+**发送格式**:
 
 ```json
 {
@@ -1200,73 +1215,93 @@ ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&t
 }
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| type | string | 固定值 "getNewMessageList" |
-| page | number | 请求的页码 |
-| pageSize | number | 每页消息数量 |
-| room | string | 聊天房间ID |
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| type | string | 是 | 固定值 `"getNewMessageList"` |
+| page | number | 是 | 页码（从 1 开始，连接时自动推送的是第 1 页） |
+| pageSize | number | 是 | 每页消息数量 |
+| room | string | 否 | 房间ID，不传则使用连接时指定的房间 |
+
+**响应格式**（同 4.8.2）:
+
+- 有消息：`{ "code": 200, "type": "list", "historyMsgList": [...] }`
+- 无更多消息：`{ "code": 404 }`
+
+---
 
 #### 4.8.4 客户端发送 - 发送聊天消息
 
-**发送文本消息**:
+连接建立后，客户端通过 WebSocket 发送 JSON 消息即可。大部分字段有默认值，**最简只需 `content` 字段**。
+
+**最简发送**（推荐）:
+
+```json
+{
+  "content": "明天下午的技术评审会议记得参加"
+}
+```
+
+**完整字段**:
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| content | string | 是 | - | 消息内容（文本内容或媒体文件URL） |
+| media_type | string | 否 | `"text"` | 消息类型：`text` / `image` / `video` / `time` |
+| room | string | 否 | 连接时的房间 | 目标房间ID |
+| sender_id | string | 否 | 当前用户ID | 发送者ID（从JWT自动解析） |
+| receiver_id | string | 否 | `""` | 接收者用户ID |
+| type | string | 否 | `"private"` | 聊天类型：`private` / `group` |
+| nickname | string | 否 | `""` | 发送者昵称 |
+| avatar | string | 否 | `""` | 发送者头像URL |
+| is_sender | boolean | 否 | - | 服务端自动计算，无需客户端设置，不会存入数据库 |
+| status | number | 否 | `1` | 消息状态：1=未读 |
+
+**发送文本消息示例**:
 
 ```json
 {
   "content": "明天下午的技术评审会议记得参加",
   "media_type": "text",
   "receiver_id": "user_da8add51-4bcc-4d82-a4c3-dcd7a44b527b",
-  "room": "30908286-466b-485e-b673-332db053bd18",
-  "sender_id": "user_b7d8955c-8339-458e-a13b-461b1271e5d4",
-  "is_sender": true,
-  "status": 1,
   "type": "private",
-  "avatar": "https://...",
-  "nickname": "张三"
+  "nickname": "张三",
+  "avatar": "https://..."
 }
 ```
 
-**发送图片消息**:
+**发送图片消息示例**:
 
 ```json
 {
   "content": "http://localhost:3002/uploads/chats/1710921600000.png",
   "media_type": "image",
-  "receiver_id": "user_da8add51-4bcc-4d82-a4c3-dcd7a44b527b",
-  "room": "30908286-466b-485e-b673-332db053bd18",
-  "sender_id": "user_b7d8955c-8339-458e-a13b-461b1271e5d4",
-  "is_sender": true,
-  "status": 1,
-  "type": "private",
-  "avatar": "https://...",
-  "nickname": "张三"
+  "receiver_id": "user_da8add51-4bcc-4d82-a4c3-dcd7a44b527b"
 }
 ```
 
-**发送视频消息**:
+**发送视频消息示例**:
 
 ```json
 {
   "content": "http://localhost:3002/uploads/chats/1710921600001.mp4",
   "media_type": "video",
-  "receiver_id": "user_da8add51-4bcc-4d82-a4c3-dcd7a44b527b",
-  "room": "30908286-466b-485e-b673-332db053bd18",
-  "sender_id": "user_b7d8955c-8339-458e-a13b-461b1271e5d4",
-  "is_sender": true,
-  "status": 1,
-  "type": "private",
-  "avatar": "https://...",
-  "nickname": "张三"
+  "receiver_id": "user_da8add51-4bcc-4d82-a4c3-dcd7a44b527b"
 }
 ```
 
-**说明**: 客户端发送消息时，`createdAt`和`updatedAt`由服务器自动添加，无需客户端传递。
+**说明**:
+- `sender_id` 由服务端从 JWT 中自动解析，客户端无需传递
+- `is_sender` 由服务端为每个接收方单独计算（`sender_id === 当前用户ID`），不会存入数据库，客户端无需传递
+- `createdAt` 和 `updatedAt` 由服务端自动生成
+- 图片/视频消息的 `content` 为文件上传接口返回的 URL
 
-#### 4.8.5 服务器广播 - 新消息通知
+---
 
-当房间内有新消息时，服务器会广播给房间内所有连接的客户端。`is_sender` 字段由服务端根据每个接收方自动计算（比较 `sender_id` 与当前连接用户的ID），无需客户端传递。
+#### 4.8.5 服务端广播 - 新消息通知
 
-**广播消息格式**:
+当房间内有新消息时，服务器会实时广播给房间内所有在线客户端。
+
+**广播格式**:
 
 ```json
 {
@@ -1289,6 +1324,48 @@ ws://localhost:3002/api/chat/connect?room=30908286-466b-485e-b673-332db053bd18&t
     "__v": 0
   }
 }
+```
+
+**说明**:
+- `is_sender` 由服务端自动计算：对发送者为 `true`，对其他接收者为 `false`
+- 只有在线（已建立 WebSocket 连接）的客户端会收到广播
+- 消息保存成功后才会广播，同时更新房间的 `last_message` 和 `last_message_time`
+
+---
+
+#### 4.8.6 服务端错误推送
+
+消息处理失败时，服务端会返回错误信息：
+
+```json
+{
+  "code": 500,
+  "message": "消息处理失败"
+}
+```
+
+获取历史消息失败时：
+
+```json
+{
+  "code": 500,
+  "message": "获取历史消息失败"
+}
+```
+
+---
+
+#### 4.8.7 完整交互流程示例
+
+```
+1. POST /api/mobile_officing/chat/room    → 创建/获取房间，拿到 room_id
+2. GET  /api/mobile_officing/user/info     → 获取当前用户信息（nickname、avatar 等）
+3. WebSocket 连接 ws://host/api/chat/connect?room={room_id}&token={jwt}
+4. ← 收到 { code: 200, type: "list", historyMsgList: [最新的5条，正序排列] }
+5. → 发送 { "content": "你好" }
+6. ← 收到 { code: 200, type: "other", data: {...} }  （广播给自己和其他人）
+7. → 发送 { "type": "getNewMessageList", "page": 2, "pageSize": 20 }  （加载更多历史）
+8. ← 收到 { code: 200, type: "list", historyMsgList: [...] }
 ```
 
 ---

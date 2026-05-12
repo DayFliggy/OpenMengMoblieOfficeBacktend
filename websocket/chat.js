@@ -49,6 +49,14 @@ const setupWebSocket = (server) => {
       ws.room = room
       ws.userId = userId
       ws.type = roomDoc.type
+      ws.nickname = user.nickname || user.username || ''
+      ws.avatar = user.avatar || ''
+      // 私聊时自动推导对方用户ID
+      ws.receiverId = ''
+      if (roomDoc.type === 'private') {
+        const other = roomDoc.members.find(m => m.user_id !== userId)
+        if (other) ws.receiverId = other.user_id
+      }
 
       // 加入房间
       if (!rooms.has(room)) {
@@ -81,14 +89,14 @@ const setupWebSocket = (server) => {
             const newMessage = new Message({
               media_type: message.media_type || 'text',
               content: message.content,
-              is_sender: message.is_sender || false,
-              nickname: message.nickname || '',
-              receiver_id: message.receiver_id || '',
-              room: message.room || room,
-              sender_id: message.sender_id || userId,
+              is_sender: false,
+              nickname: message.nickname || ws.nickname,
+              receiver_id: message.receiver_id || ws.receiverId,
+              room: message.room || ws.room,
+              sender_id: message.sender_id || ws.userId,
               status: message.status || 1,
-              type: message.type || 'private',
-              avatar: message.avatar || ''
+              type: message.type || ws.type,
+              avatar: message.avatar || ws.avatar
             })
             await newMessage.save()
 
@@ -96,9 +104,15 @@ const setupWebSocket = (server) => {
             await Room.updateOne(
               { room_id: room },
               {
-                last_message: message.content ? message.content.substring(0, 100) : '',
+                last_message: message.content ? String(message.content).substring(0, 100) : '',
                 last_message_time: newMessage.createdAt
               }
+            )
+
+            // 更新发送者的已读时间，避免自己的消息被计为未读
+            await Room.updateOne(
+              { room_id: room, 'members.user_id': userId },
+              { $set: { 'members.$.last_read_at': new Date() } }
             )
 
             // 广播给房间内所有客户端
@@ -107,8 +121,9 @@ const setupWebSocket = (server) => {
               roomClients.forEach((client) => {
                 if (client.readyState === WebSocket.OPEN) {
                   const msgObj = newMessage.toObject()
-                  // 为每个客户端单独计算 is_sender
+                  // 为每个客户端单独计算 is_sender 和 status
                   msgObj.is_sender = (msgObj.sender_id === client.userId)
+                  msgObj.status = msgObj.is_sender ? 2 : (msgObj.status || 1)
                   client.send(JSON.stringify({
                     code: 200,
                     type: 'other',
@@ -173,10 +188,16 @@ async function sendHistory(ws, room, page, pageSize) {
     // 反转为时间正序
     messages.reverse()
 
+    // 为当前客户端计算每条消息的 is_sender
+    const historyMsgList = messages.map(msg => ({
+      ...msg,
+      is_sender: msg.sender_id === ws.userId
+    }))
+
     ws.send(JSON.stringify({
       code: 200,
       type: 'list',
-      historyMsgList: messages
+      historyMsgList
     }))
   } catch (err) {
     console.error('Send history error:', err.message)
